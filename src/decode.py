@@ -1,45 +1,53 @@
 import binascii
 import os
+import sys
 
 USE_TRIVIAL_IMPLEMENTATION = int(os.environ.get('USE_TRIVIAL_IMPLEMENTATION', '0'))
 
-def read_binary_file(file_in, file_out):
-    with open(file_in, "rb") as f_in:
-        with open(file_out, "wb") as f_out:
-            # read
+def read_binary_file():
+    f_out = os.fdopen(sys.stdout.fileno(), 'wb')
+    f_err = os.fdopen(sys.stderr.fileno(), 'wb')
+
+    pair = []
+    current_data = []
+
+    # read byte from standard input
+    byte = sys.stdin.buffer.read(1)
+
+    while byte:
+        # byte to hex
+        hex_input = byte.hex()
+        pair.append(hex_input)
+        if len(pair) == 2:
+            # process
+            data = decode(pair, current_data)
+            current_data += data
+
+            # write to standard output
+            for hex_output in current_data:
+                # hex to bin
+                bin_output = binascii.unhexlify(hex_output)
+                f_out.write(bin_output)
+            f_out.flush()
+
+            # re-encode decoding data
+            reencoded_data = []
+            if USE_TRIVIAL_IMPLEMENTATION:
+                for d in current_data:
+                    reencoded_data += ['00', d]
+            else:
+                pass
+
+            # write to standard error
+            for hex_output in reencoded_data:
+                bin_output = binascii.unhexlify(hex_output)
+                f_err.write(bin_output)
+            f_err.flush()
+
             pair = []
-            current_data = []
 
-            byte = f_in.read(1)
-            while byte:
-                # bin to hex
-                hex_input = binascii.hexlify(byte)
-                # print('input', hex_input)
-                pair.append(hex_input)
-                if len(pair) == 2:
-                    # process
-                    data = decode(pair, current_data)
-                    current_data += data
-                    print('output', current_data)
-
-                    # write to standard output
-                    for hex_output in current_data:
-                        # hex to bin
-                        bin_output = binascii.unhexlify(hex_output)
-                        f_out.write(bin_output)
-
-                    # write to standard error
-                    reencoded_data = []
-                    if USE_TRIVIAL_IMPLEMENTATION:
-                        for d in current_data:
-                            reencoded_data += [0, d]
-                    else:
-                        pass
-
-                    pair = []
-
-                # read
-                byte = f_in.read(1)
+        # read byte from stdin
+        byte = sys.stdin.buffer.read(1)
 
 def decode(pair, current_data):
     p, q = pair
@@ -64,6 +72,4 @@ def decode(pair, current_data):
     return current_data[start_idx:start_idx+q_int] # Read the last pi characters appended
 
 if __name__ == "__main__":
-    # read_binary_file('decode_input.bin', 'decode_output.bin')
-    read_binary_file('test1.in', 'test1.out')
-    read_binary_file('test2.in', 'test2.out')
+    read_binary_file()
